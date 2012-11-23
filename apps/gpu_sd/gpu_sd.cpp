@@ -110,7 +110,9 @@ int main (int argc, char * argv[])
         ("help", "output this help message")
         ("session,s", arg::value< std::string >(), "set session name")
         ("hostname,h", arg::value< std::string >(), "set hostname")
-        ("daemon,d", "run as daemon");
+        ("daemon,d", "run as daemon")
+        ("width", arg::value< int >(), "maximum width to report")
+        ("height", arg::value< int >(), "maximum width to report");
 
     try
     {
@@ -141,6 +143,7 @@ int main (int argc, char * argv[])
     const bool daemon = false;
 #endif
 
+
 #ifdef GPUSD_CGL
     gpusd::cgl::Module::use();
 #endif
@@ -151,11 +154,40 @@ int main (int argc, char * argv[])
     gpusd::wgl::Module::use();
 #endif
 
-    const GPUInfos gpus = gpusd::Module::discoverGPUs();
+    GPUInfos gpus = gpusd::Module::discoverGPUs();
     if( gpus.empty( ))
     {
         std::cerr << "No GPUs found, quitting" << std::endl;
         return EXIT_FAILURE;
+    }
+
+    if( vm.count( "width" ) )
+    {
+        const int width = vm["width"].as< int >();
+        if( width > 0 )
+        {
+            for( GPUInfos::iterator gpu = gpus.begin();
+                 gpu != gpus.end(); ++gpu )
+                gpu->pvp[2] = std::min( gpu->pvp[2], width );
+        }
+        else
+        {
+            std::cerr << "Ignoring negative width" << std::endl;
+        }
+    }
+    if( vm.count( "height" ) )
+    {
+        const int height = vm["height"].as< int >();
+        if( height > 0 )
+        {
+            for( GPUInfos::iterator gpu = gpus.begin();
+                 gpu != gpus.end(); ++gpu )
+                gpu->pvp[3] = std::min( gpu->pvp[3], height );
+        }
+        else
+        {
+            std::cerr << "Ignoring negative height" << std::endl;
+        }
     }
 
     lunchbox::Servus service( "_gpu-sd._tcp" );
